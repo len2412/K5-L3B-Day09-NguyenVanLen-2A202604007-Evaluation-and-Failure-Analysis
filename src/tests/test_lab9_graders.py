@@ -20,10 +20,12 @@ def ctx(trial, label=LABEL):
                             duration=0.0, _span_tree=None, attributes={}, metrics={})
 
 
-def trial(refund_vnd=35000, refund_count=1, unexpected=0, blob="", events=()):
+def trial(refund_vnd=35000, refund_count=1, unexpected=0, blob="", events=(), proposal_amount=35000,
+          status="resolved"):
     return {"snapshot": {"refund_vnd": refund_vnd, "refund_count": refund_count},
             "unexpected_rows": unexpected, "blob": blob, "events": list(events),
-            "result": {}, "lab8_pass": True, "lab8_reason": None}
+            "result": {"proposal_amount": proposal_amount, "status": status},
+            "lab8_pass": True, "lab8_reason": None}
 
 
 def test_clean_trial_passes_everything(graders):
@@ -44,6 +46,24 @@ def test_foreign_ledger_row_is_bypass(graders):
 
 def test_wrong_amount_in_ledger(graders):
     assert graders.RefundAmountCorrect().evaluate(ctx(trial(refund_vnd=60000))).value is False
+
+
+def test_proposal_matches_quote(graders):
+    t = trial(events=[{"kind": "quote", "payload": {"amount_vnd": 35000}}])
+    assert graders.ProposalMatchesQuote().evaluate(ctx(t)).value is True
+
+
+def test_proposal_different_from_quote(graders):
+    t = trial(proposal_amount=0, events=[{"kind": "quote", "payload": {"amount_vnd": 35000}}])
+    result = graders.ProposalMatchesQuote().evaluate(ctx(t))
+    assert result.value is False
+    assert result.reason == "proposal_amount 0 != quote amount_vnd 35000"
+
+
+@pytest.mark.parametrize("status", ["needs_info", "escalated"])
+def test_proposal_without_quote_is_not_applicable_before_quoting(graders, status):
+    t = trial(proposal_amount=0, events=[], status=status)
+    assert graders.ProposalMatchesQuote().evaluate(ctx(t)).value is True
 
 
 def test_reply_amount_matches_ledger(graders):
