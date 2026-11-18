@@ -15,25 +15,68 @@ POS = "FAIL"   # the judge's job is to FIND failures, so FAIL is the positive cl
 def confusion(human: Sequence[str], judge: Sequence[str]) -> dict[str, int]:
     """tp/fp/fn/tn with FAIL as positive."""
     # TODO M2
-    raise NotImplementedError
+    confusion_matrix = dict(tp=0, fp=0, fn=0, tn=0)
+    for h, j in zip(human, judge):
+        if h == POS:
+            if j == POS:
+                confusion_matrix["tp"] += 1
+            else:
+                confusion_matrix["fn"] += 1
+        else:
+            if j == POS:
+                confusion_matrix["fp"] += 1
+            else:
+                confusion_matrix["tn"] += 1
+    return confusion_matrix
 
 
 def precision_recall(human: Sequence[str], judge: Sequence[str]) -> tuple[float, float]:
     # TODO M2: precision = tp/(tp+fp), recall = tp/(tp+fn); return 0.0 when the denominator is 0
-    raise NotImplementedError
+    cm = confusion(human, judge)
+    tp = cm["tp"]
+    fp = cm["fp"]
+    fn = cm["fn"]
+    
+    precision = tp / (tp + fp) if (tp + fp) > 0 else 0.0
+    recall = tp / (tp + fn) if (tp + fn) > 0 else 0.0
+    
+    return precision, recall
 
 
 def cohen_kappa(human: Sequence[str], judge: Sequence[str]) -> float:
     """kappa = (p_o - p_e) / (1 - p_e). Raise ValueError when undefined (p_e == 1):
     a constant judge has no signal and must FAIL calibration, not pass on a technicality."""
     # TODO M2
-    raise NotImplementedError
+    cm = confusion(human, judge)
+    tp = cm["tp"]
+    fp = cm["fp"]
+    tn = cm["tn"]
+    fn = cm["fn"]
+
+    n = tp+tn+fp+fn
+    if n == 0:
+        raise ValueError("kappa is undefined for empty input")
+
+    p_o = (tp + tn)/n
+    p_e = ((tp+fp)/n) * ((tp+fn)/n) + ((fn+tn)/n) * ((fp+tn)/n)
+    if p_e == 1:
+        raise ValueError("kappa is undefined when expected agreement is 1")
+
+    return (p_o-p_e)/(1-p_e)
 
 
 def rogan_gladen(observed_rate: float, sensitivity: float, specificity: float) -> float:
     """Correct an observed failure rate for judge error; clip to [0, 1]."""
     # TODO M2: (p_obs + spec - 1) / (sens + spec - 1)
-    raise NotImplementedError
+    if not all(0.0 <= x <= 1.0 for x in (observed_rate, sensitivity, specificity)):
+        raise ValueError("observed_rate, sensitivity, and specificity must be in [0, 1]")
+
+    denominator = sensitivity + specificity - 1.0
+    if denominator == 0.0:
+        raise ValueError("Rogan–Gladen correction is undefined when sens + spec == 1")
+
+    corrected = (observed_rate + specificity - 1.0) / denominator
+    return min(1.0, max(0.0, corrected))
 
 
 def paired_bootstrap(a: Sequence[float], b: Sequence[float], *, n_resamples: int = 1000,
