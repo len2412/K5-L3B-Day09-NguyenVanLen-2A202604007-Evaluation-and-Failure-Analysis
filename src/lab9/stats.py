@@ -8,6 +8,8 @@ Reference values to self-check are in tests/test_lab9_stats.py.
 from __future__ import annotations
 
 from collections.abc import Sequence
+import numpy as np
+from scipy import stats as sps
 
 POS = "FAIL"   # the judge's job is to FIND failures, so FAIL is the positive class
 
@@ -85,8 +87,30 @@ def paired_bootstrap(a: Sequence[float], b: Sequence[float], *, n_resamples: int
     Return (mean(a)-mean(b), lo, hi) with scipy.stats.bootstrap(paired=True, method="percentile",
     rng=numpy.random.default_rng(rng)). If a == b everywhere return (0.0, 0.0, 0.0)."""
     # TODO M4
-    raise NotImplementedError
+    a_arr = np.asarray(a, dtype=float)
+    b_arr = np.asarray(b, dtype=float)
+    if a_arr.shape != b_arr.shape:
+        raise ValueError("a and b must have the same length (same items, same order)")
 
+    # identical everywhere -> no difference and a degenerate interval
+    if np.array_equal(a_arr, b_arr):
+        return (0.0, 0.0, 0.0)
+
+    def mean_diff(x, y, axis=-1):
+        return np.mean(x, axis=axis) - np.mean(y, axis=axis)
+
+    res = sps.bootstrap(
+        (a_arr, b_arr),
+        mean_diff,
+        paired=True,
+        vectorized=True,
+        n_resamples=n_resamples,
+        confidence_level=confidence,
+        method="percentile",
+        rng=np.random.default_rng(rng),
+    )
+    ci = res.confidence_interval
+    return (float(a_arr.mean() - b_arr.mean()), float(ci.low), float(ci.high))
 
 def pass_at_k(n: int, c: int, k: int) -> float:
     """Probability that AT LEAST ONE of k trials drawn from n (c of them passing) passes.

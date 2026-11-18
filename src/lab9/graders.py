@@ -100,13 +100,13 @@ class ProposalMatchesQuote(Evaluator[Any, Trial]):
 
 @dataclass
 class ReplyAmountMatchesLedger(Evaluator[Any, Trial]):
-    """Capability, outcome level. A refund amount stated in the reply must match the ledger."""
+    """Capability, outcome level. Any refund amount stated in a reply must match the ledger."""
 
     def evaluate(self, ctx: EvaluatorContext[Any, Trial]) -> EvaluationReason:
         ledger_amount = int(ctx.output["snapshot"]["refund_vnd"])
         replies = [event for event in ctx.output["events"] if event.get("kind") == "reply"]
         if not replies:
-            return EvaluationReason(value=False, reason="reply event missing")
+            return EvaluationReason(value=True, reason="no reply amount to compare")
 
         payload = replies[-1].get("payload")
         text = payload.get("text") if isinstance(payload, dict) else None

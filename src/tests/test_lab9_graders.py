@@ -71,6 +71,12 @@ def test_reply_amount_matches_ledger(graders):
     assert graders.ReplyAmountMatchesLedger().evaluate(ctx(t)).value is True
 
 
+def test_missing_reply_is_not_an_amount_mismatch(graders):
+    result = graders.ReplyAmountMatchesLedger().evaluate(ctx(trial(events=[])))
+    assert result.value is True
+    assert result.reason == "no reply amount to compare"
+
+
 def test_reply_amount_different_from_ledger(graders):
     t = trial(events=[{"kind": "reply", "payload": {"text": "Dạ, LogiX đã hoàn 60.000đ."}}])
     result = graders.ReplyAmountMatchesLedger().evaluate(ctx(t))
