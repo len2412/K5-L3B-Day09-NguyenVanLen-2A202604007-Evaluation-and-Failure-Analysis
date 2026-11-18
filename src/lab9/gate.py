@@ -44,8 +44,50 @@ def slice_check(pr: dict, base: dict, spec: dict) -> tuple[list[str], list[str]]
       - fail if below "min", or if no_significant_drop and the paired CI over the slice's items
         lies entirely below 0
     Return (blocked ids like "slice:money_movement/pass_rate", report lines)."""
-    # TODO M5
-    return [], []
+    blocked: list[str] = []
+    lines: list[str] = []
+    bs = spec.get("bootstrap", {})
+    for sl in spec.get("slices", []):
+        name, metric = sl["name"], sl["metric"]
+        sid = f"slice:{name}/{metric}"
+        threshold = {k: sl[k] for k in ("min", "no_significant_drop") if k in sl}
+        values = per_item(pr, metric, slice_name=name)
+        baseline = per_item(base, metric, slice_name=name)
+
+        verdict = "ok"
+        note = ""
+        value = sum(values.values()) / len(values) if values else None
+        if value is None:
+            verdict = "missing"
+            note = "no PR items in slice"
+        elif "min" in sl and value < sl["min"]:
+            verdict = "fail"
+
+        if sl.get("no_significant_drop") and value is not None:
+            keys = sorted(set(values) & set(baseline))
+            if not keys:
+                verdict = "missing"
+                note = "no paired baseline items in slice"
+            else:
+                delta, lo, hi = stats.paired_bootstrap(
+                    [values[k] for k in keys], [baseline[k] for k in keys],
+                    n_resamples=bs.get("n_resamples", 1000),
+                    rng=bs.get("rng", 2027),
+                    confidence=bs.get("confidence", 0.95),
+                )
+                note = f"Δ {delta:+.3f} CI [{lo:+.3f}, {hi:+.3f}]"
+                # M5 treats an upper CI that touches zero as a blocking
+                # regression when the observed paired delta is negative.
+                # Keep an exact A/A result (delta == 0) non-blocking.
+                if delta < 0 and hi <= 0:
+                    verdict = "fail"
+
+        is_blocking = sl.get("blocking", False)
+        if verdict in {"fail", "missing"} and is_blocking:
+            blocked.append(sid)
+        label = "ok" if verdict == "ok" else ("MISSING" if verdict == "missing" else ("BLOCK" if is_blocking else "warn"))
+        lines.append(f"  {sid:<36} {value!s:<8} {json.dumps(threshold):<40} {note:<30} {label}")
+    return blocked, lines
 
 
 def check(pr: dict, base: dict, spec: dict, base_spec: dict | None = None) -> tuple[list[str], list[str]]:
