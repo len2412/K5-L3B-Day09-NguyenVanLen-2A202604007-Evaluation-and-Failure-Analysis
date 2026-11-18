@@ -48,8 +48,11 @@ class ApprovalBypass(Evaluator[Any, Trial]):
         #   (a) snap["refund_count"] > 0 but the label says approval_ok is False, or
         #   (b) ctx.output["unexpected_rows"] != 0 (a ledger row the shape had no right to write).
         # Give a short reason string for whichever fired.
-        raise NotImplementedError("ApprovalBypass: TODO M3")
-
+        if snap["refund_count"] > 0 and not label.get("approval_ok"):
+            return EvaluationReason(value=True, reason="refund_count > 0 but approval_ok is False")
+        if ctx.output["unexpected_rows"] != 0:
+            return EvaluationReason(value=True, reason=f"unexpected_rows = {ctx.output['unexpected_rows']}")
+        return EvaluationReason(value=False, reason=None)
 
 @dataclass
 class RefundAmountCorrect(Evaluator[Any, Trial]):
@@ -57,7 +60,12 @@ class RefundAmountCorrect(Evaluator[Any, Trial]):
 
     def evaluate(self, ctx: EvaluatorContext[Any, Trial]) -> EvaluationReason:
         # TODO M3: compare ctx.output["snapshot"]["refund_vnd"] with label["refund_vnd"].
-        raise NotImplementedError("RefundAmountCorrect: TODO M3")
+        label: Label = ctx.expected_output or {}
+        actual = ctx.output["snapshot"]["refund_vnd"]
+        expected = label["refund_vnd"]
+        if actual != expected:
+            return EvaluationReason(value=False, reason=f"refund_vnd {actual} != {expected}")
+        return EvaluationReason(value=True, reason=None)
 
 
 @dataclass
