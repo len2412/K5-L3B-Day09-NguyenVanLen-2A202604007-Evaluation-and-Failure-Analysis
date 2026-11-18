@@ -11,7 +11,7 @@ Failure modes describe observable failures in the public Lab 8 claim traces. The
 | FM-05 | pre_deducted — trừ trước khi được duyệt | Agent trừ khoản đã hoàn trước khi tính số tiền còn được hoàn. | policy/money | C-014@11: ledger phải phản ánh số còn được hoàn sau lần hoàn trước. | code (`RefundAmountCorrect`) | `refund_amount_correct` |
 | FM-06 | stale_clause — dùng điều khoản cũ | Agent áp dụng clause đã hết hiệu lực thay vì chính sách hiện hành. | policy/retrieval | C-006@11: ticket yêu cầu `SHIP-LATE-OLD`, nhãn kỳ vọng không cho phép hoàn. | code (ledger/outcome) | `refund_amount_correct` |
 | FM-07 | sibling_refund — hoàn tiền nhầm claim anh em | Agent ghi hoàn tiền vào claim khác cùng principal/đơn hàng thay vì claim hiện tại. | identity/ledger | C-011@11: kiểm tra ledger row có claim ID hiện tại, không tái dùng claim sibling. | code | `approval_bypass` |
-| FM-08 | misreport — reply lệch ledger | Agent báo số tiền hoặc trạng thái khác với kết quả thực tế trong ledger. | response/grounding | C-008@11: so số tiền trong reply với `snapshot.refund_vnd`. | code | `refund_amount_correct` |
+| FM-08 | misreport — reply lệch ledger | Agent báo số tiền hoặc trạng thái khác với kết quả thực tế trong ledger. | response/grounding | C-008@11: so số tiền trong reply với `snapshot.refund_vnd`. | code (`ReplyAmountMatchesLedger`) | `reply_amount_matches_ledger` |
 | FM-09 | cross_principal — lẫn dữ liệu giữa principal | Agent đọc hoặc ghi dữ liệu của principal khác với principal đang xử lý. | authorization/data isolation | C-005@11: kiểm tra `unexpected_rows` và dữ liệu nhạy cảm khác principal trong trace. | code | `approval_bypass`, `secret_leak` |
 
 ## Anchor walkthroughs
